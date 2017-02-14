@@ -1,7 +1,10 @@
-# Vehicle Recognition
+# Vehicle Recognition Using Encoder-Decoder Networks
 
-This is a collection of mechanisms for performing segmentation 
-of image data with respect to cars.  The data source is Udacity's
+This presents two mechanisms for performing segmentation 
+of image data with respect to cars, a classic encoder-decoder
+and the new `U-Net` encoder-decoder.  
+
+The data source is Udacity's
 [annotated driving dataset](https://github.com/udacity/self-driving-car/tree/master/annotations).
 This data is used as a source of images and result masks
 for training networks to directly map an input image to a 
@@ -26,20 +29,21 @@ the network.  The reason for this is I would prefer to simply have a
 collection of segmentation training data and not have to decode it 
 each time it is run.  I also would like this training set for 
 use in the future without having to remember that the bounding boxes
-required correction.  Due to memory considerations, I decided to 
+required correction.  As a bonus, it loads much faster as small images
+from SSD.  Due to GPU memory constraints I decided to 
 resize to 240x160.  This is a slightly different
 aspect ratio than the original image, but the actual scaled dimension
 of 240x150 has problems with the max-pooling and up-sampling in the model
 due to divisibility.  For three-channel `unit8` feature images and single-channel 
-`float32` point label segmentation masks, this is a total consumption 
+`float32` point label segmentation masks, this yields a total consumption 
 for all 22,065 images of just under 6GB.
 
 For training, the resized images are loaded.  The feature images are 
 left as RGB, whereas the label images are grayscale.  OpenCV loads our 
 grayscale images as color, so we deliberately have to transform back
-to grayscale.  The label is forced to an appropriate shape and normalized.
-Note pre-initializing `numpy` arrays for loading, as this conserves memory
-for large datasets.  
+to grayscale.  The label is forced to an appropriate shape as normalized
+`float32`. Note pre-initializing `numpy` arrays for loading, as this 
+conserves memory for large datasets.  
 
 Further transformations are defined for the following operations, 
 which are applied by the Keras generator:
@@ -52,7 +56,7 @@ All of these are applied to the feature images, but only the geometric
 transformations are applied to the label images.  The transformations
 are applied in a Keras generator for augmentation.  The generator 
 supports batches because batching allows us to train faster by not
-making backpropagation steps for each feature/label pair.  One has to be
+making backpropagation steps for each feature-label pair.  One has to be
 particularly careful with the dimension of tensors in the translation
 and expansion.  The reason for this is that the masks are pre-normalized,
 and when OpenCV performs operations on a single channel, the assumption is
@@ -65,17 +69,17 @@ of fit function. This simply measures the similarity of the two images by comput
 the relative overlap.  It is important to use the Keras `Backend` methods for 
 computing this quantity because the ultimate object of the predicted value is a 
 TensorFlow `Tensor` object.  Consequently we need to map a function over
-our `Tensor` objects and define some comparisons to accomplish this.
+our `Tensor` objects and define some comparisons to accomplish this.  Other choices
+of loss used in the literature include pixel-wise cross-entropy of soft-max.
 
 There are two candidate models, both encoder-decoders. The first model is simple 
-and is able to be specified using a Keras `Sequential` object.  This type 
-of encoder-decoder is fairly common.  The second model is what is called 
-a `U-net` because in certain diagrams the model looks somewhat like a `U`.  It is
+and is able to be specified using a Keras `Sequential` object.  The second model is what is called 
+a `U-Net` because in certain diagrams the model looks somewhat like a `U`.  It is
 quite similar to the first model, but between similar convolutional layers 
 there is a merge of the layers.  This has the effect of allowing deep convolution
-layers to be merged with less deep convolution layers, and has been found to
+layers to be merged with more shallow convolution layers, and has been found to
 help increase performance in segmentation problems ([U-Net: Convolutional Networks for Biomedical Image Segmentation](https://arxiv.org/pdf/1505.04597.pdf)).  This model cannot be
-implemented using a Keras `Sequential` object, because the merging is not 
+implemented using a Keras `Sequential` object because the merging is not 
 sequential. 
 
 You will note that the border mode is `same`.  Unlike a network where the top end
