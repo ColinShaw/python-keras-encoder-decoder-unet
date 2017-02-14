@@ -72,11 +72,11 @@ way.
 There are two candidate models, both encoder-decoders. The first model is simple 
 and is able to be specified using a Keras `Sequential` object.  This type 
 of encoder-decoder is fairly common.  The second model is what is called 
-a `unet` because in certain diagrams the model looks somewhat like a `U`.  It is
-quite similar to the first model, but between similar convolutional sections 
+a `U-net` because in certain diagrams the model looks somewhat like a `U`.  It is
+quite similar to the first model, but between similar convolutional layers 
 there is a merge of the layers.  This has the effect of allowing deep convolution
-layers to be blended with less deep convolution layers, and has been found to
-help increase performance in segmentation problems (FILL IN LINK).  This model cannot be
+layers to be merged with less deep convolution layers, and has been found to
+help increase performance in segmentation problems ([U-Net: Convolutional Networks for Biomedical Image Segmentation](https://arxiv.org/pdf/1505.04597.pdf)).  This model cannot be
 implemented using a Keras `Sequential` object, because the merging is not 
 sequential. 
 
