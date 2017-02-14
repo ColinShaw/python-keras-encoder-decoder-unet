@@ -1,0 +1,6 @@
+training-data/*
+feature-images/*
+label-images/*
+test-images/*
+*.h5
+__pycache__/*
