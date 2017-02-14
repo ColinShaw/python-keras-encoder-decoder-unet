@@ -4,3 +4,4 @@ label-images/*
 test-images/*
 *.h5
 __pycache__/*
+*.swp
