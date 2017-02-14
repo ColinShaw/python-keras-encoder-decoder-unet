@@ -26,14 +26,13 @@ the network.  The reason for this is I would prefer to simply have a
 collection of segmentation training data and not have to decode it 
 each time it is run.  I also would like this training set for 
 use in the future without having to remember that the bounding boxes
-required correction.  For this problem, since there are 22065 total
-images and I have a working available memory of 5.5GB on my 
-GTX 1060, I decided to resize to 240x160.  This is a slightly different
-aspect ration than the original image, but the actual scaled dimension
-of 240x150 has problems with the max-pooling and upsampling in the model
-due to divisibility.  For three-channel feature images and single-channel 
-label segmentation masks, this is a total consumption of just under 3.4GB, 
-leaving plenty of room for the model on the GPU.
+required correction.  Due to memory considerations, I decided to 
+resize to 240x160.  This is a slightly different
+aspect ratio than the original image, but the actual scaled dimension
+of 240x150 has problems with the max-pooling and up-sampling in the model
+due to divisibility.  For three-channel `unit8` feature images and single-channel 
+`float32` point label segmentation masks, this is a total consumption 
+for all 22,065 images of just under 6GB.
 
 For training, the resized images are loaded.  The feature images are 
 left as RGB, whereas the label images are grayscale.  OpenCV loads our 
@@ -61,13 +60,12 @@ made to not make the single-dimensional data abstract to multiple dimensions.
 This is not how TensorFlow sees the world, so we have to reshape it.
 
 The loss function used is the intersection over union measure.  Well, the 
-negative of the intersection over union, as the function itself is a cost 
-function. This simply measures the similarity of the two images by computing 
-the relative overlap.  It is important to use the Keras backend methods for 
+negative of the intersection over union, as the function itself is a goodness
+of fit function. This simply measures the similarity of the two images by computing 
+the relative overlap.  It is important to use the Keras `Backend` methods for 
 computing this quantity because the ultimate object of the predicted value is a 
-TensorFlow Tensor object that does not admit various solutions (for example 
-iteration).  The intersection over union figure is computed in the obvious 
-way.
+TensorFlow `Tensor` object.  Consequently we need to map a function over
+our `Tensor` objects and define some comparisons to accomplish this.
 
 There are two candidate models, both encoder-decoders. The first model is simple 
 and is able to be specified using a Keras `Sequential` object.  This type 
@@ -92,3 +90,11 @@ function applies to the specific image elements, having an activation function
 with smooth derivatives facilitates greater smoothness around the origin, which 
 is what we are using to compute the intersection over union.  Consequently smoother
 segmentation.
+
+Given the time it takes to train the network, it is prudent to use Keras' 
+`ModelCheckpoint` functionality.  This saves after each epoch of the loss is 
+better than all previous losses.  This ensures that we get the best solution,
+even when further training fails to reduce loss further, or even increases it.
+
+A test script was added that takes images and applies the segmentation as an
+overlay.
