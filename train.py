@@ -1,4 +1,5 @@
 from keras.callbacks import ModelCheckpoint
+from keras.optimizers import Adam
 from keras import backend as K
 import numpy as np
 import cv2
@@ -15,13 +16,13 @@ def load_data(images):
         label = cv2.imread('label-images/' + str(i) + '.jpg')
         label = cv2.cvtColor(label, cv2.COLOR_BGR2GRAY)
         label = np.reshape(label, (np.shape(label)[0], np.shape(label)[1], 1))
-        label = label / 255.0 - 0.5
+        label = label / 127.5 - 1.0
         labels[i] = label
     return features, labels
 
 def adjust_luminance(image):
     image = cv2.cvtColor(image.astype(np.uint8), cv2.COLOR_RGB2HLS)
-    image[:,:,1] = image[:,:,1] * np.random.uniform(0.25, 1.25)
+    image[:,:,1] = image[:,:,1] * np.random.uniform(0.25, 1.0)
     return cv2.cvtColor(image, cv2.COLOR_HLS2RGB)
 
 def translate_image(image, pixels, image_size):
@@ -41,10 +42,10 @@ def stretch_image(image, pixels, image_size):
 
 def augmentation_pipeline(feature, label, image_size):
     feature = adjust_luminance(feature)
-    feature = translate_image(feature, 40, image_size)
-    feature = stretch_image(feature, 40, image_size)
-    label = translate_image(label, 40, image_size)
-    label = stretch_image(label, 40, image_size)
+    feature = translate_image(feature, 30, image_size)
+    feature = stretch_image(feature, 20, image_size)
+    label = translate_image(label, 30, image_size)
+    label = stretch_image(label, 20, image_size)
     return feature, label
 
 def pipeline_generator(input_features, input_labels, batch_size, image_size):
@@ -63,20 +64,27 @@ def pipeline_generator(input_features, input_labels, batch_size, image_size):
             i += 1
         yield features, labels
 
-def intersection_over_union(actual, predicted):
+def iou_better(actual, predicted):
+    actual = K.abs(K.flatten(actual))
+    predicted = K.abs(K.flatten(predicted))
+    intersection = K.sum(actual * predicted)
+    union = K.sum(actual) + K.sum(predicted) - intersection
+    return intersection / union
+
+def iou_simple(actual, predicted):
     actual = K.flatten(actual)
     predicted = K.flatten(predicted)
-    intersection = K.sum(predicted * actual)
-    union = K.sum(predicted) + K.sum(actual) - intersection
-    return -intersection / union
+    return K.sum(actual * predicted) / (1.0 + K.sum(actual) + K.sum(predicted))
 
 def val_loss(actual, predicted):
-    return intersection_over_union(actual, predicted)
+    return -iou_simple(actual, predicted)
 
 features, labels = load_data(22065) 
-model = models.unet((160,240,3))
-generator = pipeline_generator(features, labels, 20, (240,160))
+model = models.encoder_decoder((160,240,3))
+generator = pipeline_generator(features, labels, 1, (240,160))
 checkpoint = ModelCheckpoint(filepath='model_weights.h5', verbose=True, save_best_only=True)
+optimizer = Adam(lr=1.0e-5)
 
-model.compile(optimizer='adam', loss=intersection_over_union, metrics=[val_loss])
-model.fit_generator(generator, samples_per_epoch=10000, nb_epoch=50, callbacks=[checkpoint])
+model.compile(optimizer=optimizer, loss=val_loss, metrics=[val_loss])
+model.fit_generator(generator, samples_per_epoch=20000, nb_epoch=10, callbacks=[checkpoint])
+
