@@ -66,11 +66,19 @@ This is not how TensorFlow sees the world, so we have to reshape it.
 The loss function used is the intersection over union measure.  Well, the 
 negative of the intersection over union, as the function itself is a goodness
 of fit function. This simply measures the similarity of the two images by computing 
-the relative overlap.  It is important to use the Keras `Backend` methods for 
-computing this quantity because the ultimate object of the predicted value is a 
-TensorFlow `Tensor` object.  Consequently we need to map a function over
-our `Tensor` objects and define some comparisons to accomplish this.  Other choices
-of loss used in the literature include pixel-wise cross-entropy of soft-max.
+the relative overlap.  The intersection over union function itself is actually 
+somewhat of a challenge to compute in Keras because conditional counting is
+difficult.  You can easily use the `K.map_fn` function on a flattened label,
+but creating a mapping function that returns the right Tensor (and not a boolean
+Tensor) is difficult.  `K.switch`, for example, does not work without a constructor
+for a Tensor, and TensorFlow constants are not valid.  In any case, the standard
+trick is to use something like enough to the intersection over union metric
+in kind, but tractable and preferably fast.  The most obvious simplification is to
+just wave our hands on the specifics of the intersection calculation and just
+use the product of the Tensors instead of the count of the common support.
+To simplify this even further, we can replace the union calculation with
+an estimator that is biased away from zero.  These two intersection over
+union estimators perform differently, and affect hyperparameters differently.
 
 There are two candidate models, both encoder-decoders. The first model is simple 
 and is able to be specified using a Keras `Sequential` object.  The second model is what is called 
@@ -88,12 +96,6 @@ preserving the layer size.  That is to say, the output prediction needs to be th
 same size as the input feature image in order for us to be able to compute our
 intersection over union properly.  The simplest way to do this is to use `same` to
 make the size under max-pooling and up-sampling invariant when using the same stride.
-The reason I use `elu` is it is smoother than `relu`.  The reason this is important
-to me is I want smooth transitions on the final segmentation.  While the activation 
-function applies to the specific image elements, having an activation function
-with smooth derivatives facilitates greater smoothness around the origin, which 
-is what we are using to compute the intersection over union.  Consequently smoother
-segmentation.
 
 Given the time it takes to train the network, it is prudent to use Keras' 
 `ModelCheckpoint` functionality.  This saves after each epoch of the loss is 
