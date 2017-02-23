@@ -4,8 +4,7 @@ This presents two mechanisms for performing segmentation
 of image data with respect to cars, a classic encoder-decoder
 and the new `U-Net` encoder-decoder.  
 
-The data source is Udacity's
-[annotated driving dataset](https://github.com/udacity/self-driving-car/tree/master/annotations).
+The data source is [Udacity's annotated driving dataset](https://github.com/udacity/self-driving-car/tree/master/annotations).
 This data is used as a source of images and result masks
 for training networks to directly map an input image to a 
 car segmentation mask.  
